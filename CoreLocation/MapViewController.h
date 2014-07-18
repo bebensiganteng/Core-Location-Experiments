@@ -15,7 +15,6 @@
     CoreLocationManager     *clManager;
     IBOutlet MKMapView      *map;
     
-    BOOL                    isZoomed;
 }
 
 @end

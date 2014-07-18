@@ -10,7 +10,6 @@
 
 @implementation AnnotationModel
 
-
 @synthesize coordinate = _coordinate;
 
 - (id)initWithCoordinate:(CLLocationCoordinate2D)coordinate

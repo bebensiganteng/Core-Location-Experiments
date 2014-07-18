@@ -15,14 +15,6 @@
 
 @implementation MapViewController
 
-- (instancetype)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
-{
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
-    if (self) {
-        // Custom initialization
-    }
-    return self;
-}
 
 - (void)viewDidLoad
 {
@@ -45,7 +37,7 @@
 {
     NSLog(@"locationUpdateTo location:%f %f", location.coordinate.latitude, location.coordinate.longitude);
     
-    if ([self isItActive] && !isZoomed)
+    if ([self isItActive])
     {
         double maxLat = -200;
         double minLat =  200;
@@ -73,7 +65,8 @@
         
         [map setRegion:region animated:YES];
         
-        isZoomed = true;
+        [clManager.locationManager stopUpdatingLocation];
+        
     }
 }
 
@@ -84,18 +77,20 @@
     map.mapType                 = MKMapTypeStandard;
     map.delegate                = self;
     map.showsUserLocation       = YES;
-    isZoomed                    = false;
     
-    CLLocationDistance  radius  = 100;
+    double rad                  = clManager.getCircularRegion.radius;
     
-    // Add Circle
-    MKCircle *circle = [MKCircle
-                        circleWithCenterCoordinate:clManager.beaconPosition
-                        radius:radius];
+    if(rad > 0) {
+        
+        CLLocationCoordinate2D coord = clManager.getCircularRegion.center;
+        
+        // Add Circle
+        MKCircle *circle = [MKCircle circleWithCenterCoordinate:coord radius:rad];
+         
+        [map addOverlay:circle];
+    }
     
-    [map addOverlay:circle];
-    [clManager enableGeoFence:clManager.beaconPosition locationDistance:radius];
-
+    [clManager.locationManager startUpdatingLocation];
 }
 
 - (MKOverlayRenderer*)mapView:(MKMapView *)mapView rendererForOverlay:(id<MKOverlay>)overlay
@@ -111,6 +106,12 @@
     }
     
     return nil;
+}
+
+#pragma mark - CoreLocation
+-(void)locationError:(NSString *)msg
+{
+    [self showMessage:msg];
 }
 
 #pragma mark - Default
@@ -131,11 +132,27 @@
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
-    [clManager stopAll];
-    [clManager startMonitoringRegion];
+    //[clManager stopAll];
+    //[clManager startMonitoringRegion];
 }
 
 #pragma mark - Utils
+
+
+-(void) showMessage:(NSString *) message
+{
+    UIAlertView *alertView = [[UIAlertView alloc]
+                              initWithTitle:@"iBeacon"
+                              message:message
+                              delegate:self
+                              cancelButtonTitle:@"Close"
+                              otherButtonTitles:Nil, nil];
+    
+    alertView.alertViewStyle = UIAlertViewStyleDefault;
+    
+    [alertView show];
+    
+}
 
 - (BOOL)isItActive
 {

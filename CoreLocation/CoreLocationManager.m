@@ -11,7 +11,7 @@
 
 @implementation CoreLocationManager
 
-@synthesize locationManager;
+#pragma mark - Init
 
 + (CoreLocationManager *) sharedLocationManager
 {
@@ -25,107 +25,71 @@
     return sharedLocationManager;
 }
 
+
 - (CoreLocationManager *) initInstance
 {
     self = [super init];
     
     if (self != nil) {
-
-        [self setupLocationManager];
+        
+        locationManager = nil;
+        [self setBluetooth];
+        
     }
     
     return self;
 }
 
-- (void) setupLocationManager
+
+- (BOOL)startCoreLocation
 {
     
-    timeStamp                       = [NSDate dateWithTimeIntervalSince1970:0];
-    
-    isGeoFencing                    = NO;
-    
-    locationManager                 = [[CLLocationManager alloc] init];
-    locationManager.delegate        = self;
-    locationManager.desiredAccuracy = kCLLocationAccuracyBest;
-    locationManager.distanceFilter  = kCLDistanceFilterNone;
-    locationManager.activityType    = CLActivityTypeFitness;
-    
-    // TODO: Doesn't need both I think
-    [locationManager requestAlwaysAuthorization];
-    [locationManager requestWhenInUseAuthorization];
-    
-    if (![self isSupported]) {
-        NSLog(@"Not Supported");
-    }
-}
-
-#pragma mark - isSupported
-
-- (BOOL) isSupported
-{
-    
-    if (![CLLocationManager isMonitoringAvailableForClass:[CLBeaconRegion class]]) {
-        NSLog(@"Beacon Tracking Unavailable");
-    }
-    
-    if (![CLLocationManager locationServicesEnabled]) {
-        NSLog(@"Location Services Unavailable");
+    if ([isError length] > 0) {
+        [self.delegate locationError:isError];
         
-    } else {
-        
-        if (![CLLocationManager isMonitoringAvailableForClass:[CLCircularRegion class]]) {
-            NSLog(@"GeoFence Monitoring Unavailable");
-            
-        } else {
-            
-            if ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusDenied ||
-                [CLLocationManager authorizationStatus] == kCLAuthorizationStatusRestricted) {
-                
-                NSLog(@"Location Tracking Unavailable");
-            } else {
-                
-                // We have the services we need to get started
-                
-                return YES;
-            }
-        }
+        return NO;
     }
     
-    return NO;
+    // ensure everything is stopped
+    [self stopCoreLocation];
+    
+    // 2: check if the device inside the region
+    [locationManager startMonitoringForRegion:circularRegion];
+    // TODO: use block code
+    // http://www.cocoanetics.com/2014/05/radar-monitoring-clregion-immediately-after-removing-one-fails/
+    [self performSelector:@selector(requestState:) withObject:circularRegion afterDelay:1];
+    
+    isGeoFencing = YES;
+    
+    return isGeoFencing;
 }
 
-- (void) locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+- (void)stopCoreLocation
 {
-    //[self setup];
+    if (isGeoFencing) {
+        [self stopMonitoringRegions];
+    }
+    
+    if (isBeacon) {
+        // stop beacon
+    }
+    
+    [self resetDispatcher];
 }
 
-- (void)startUpdatingLocation
+- (void)requestState:(CLRegion*)region
 {
-    [locationManager startUpdatingLocation];
+    [self.locationManager requestStateForRegion:region];
 }
-
-- (void)stopUpdatingLocation
-{
-    [locationManager stopUpdatingLocation];
-}
-
-- (void)stopAll
-{
-    [self stopUpdatingLocation];
-    [self stopMonitoringRegion];
-}
-
 
 #pragma mark - GeoFencing
 
-- (void) enableGeoFence:(CLLocationCoordinate2D)center locationDistance:(CLLocationDistance)radius
+- (void) registerGeoFence:(CLLocationCoordinate2D)center locationDistance:(CLLocationDistance)radius
 {
     
     if (radius > locationManager.maximumRegionMonitoringDistance) {
         radius = locationManager.maximumRegionMonitoringDistance;
     }
-    
-    isGeoFencing = YES;
     
     // Create the geographic region to be monitored. iOS 8.0
     circularRegion = [[CLCircularRegion alloc]
@@ -133,29 +97,34 @@
                       radius:radius
                       identifier:@"com.bebensiganteng.geofencing"];
     
+    
     circularRegion.notifyOnEntry    = YES;
     circularRegion.notifyOnExit     = YES;
     
     BOOL monitoringAvailability = [CLLocationManager isMonitoringAvailableForClass:[circularRegion class]];
     
-    if( monitoringAvailability ) {
-        [locationManager startMonitoringForRegion:circularRegion];
-        
-    } else {
-        
-        NSLog(@"[ERROR] monitoring is unavailable");
+    if(!monitoringAvailability ) {
+        isError = @"GeoFencing Error";
+        return;
+    }
+
+}
+
+- (CLCircularRegion *)getCircularRegion
+{
+    return circularRegion;
+}
+
+- (void)stopMonitoringRegions
+{
+    // ensure everything is cleared
+    for (CLRegion *region in [locationManager monitoredRegions]) {
+        [locationManager stopMonitoringForRegion:region];
     }
     
-    // TODO: use block code
-    // http://www.cocoanetics.com/2014/05/radar-monitoring-clregion-immediately-after-removing-one-fails/
-    [self performSelector:@selector(requestState:) withObject:circularRegion afterDelay:1];
-
+    isGeoFencing = NO;
 }
 
-- (void)requestState:(CLRegion*)region
-{
-    [self.locationManager requestStateForRegion:circularRegion];
-}
 
 #pragma mark - GeoFencing Delegates
 
@@ -180,16 +149,22 @@
 
 - (void)locationManager:(CLLocationManager *)manager monitoringDidFailForRegion:(CLRegion *)region withError:(NSError *)error
 {
-    NSLog(@"Failed monitoring region: %@", error);
+    if ([self isConformedToProtocol]) {
+        [self.delegate locationError:error.description];
+    }
+}
+
+- (void)locationManager:(CLLocationManager *)manager rangingBeaconsDidFailForRegion:(CLBeaconRegion *)region withError:(NSError *)error
+{
+    if ([self isConformedToProtocol]) {
+        [self.delegate locationError:error.description];
+    }
 }
 
 #pragma mark - Default delegates
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
 {
-    //NSLog(@"didUpdateToLocation floor:%@, lat:%f, long:%f", newLocation.floor, newLocation.coordinate.latitude, newLocation.coordinate.longitude);
-    NSLog(@"didUpdateToLocation BeaconPosition %f %f", self.beaconPosition.latitude, self.beaconPosition.longitude);
-    
     if ([self isConformedToProtocol]) {
         [self.delegate locationUpdateTo:newLocation];
     }
@@ -198,6 +173,11 @@
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
 {
     NSLog(@"Location manager failed: %@", error);
+}
+
+- (void) locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{
+    //[self setup];
 }
 
 #pragma mark - iBeacon
@@ -214,42 +194,38 @@
     beaconRegion.notifyOnExit               = YES;
     
     closestBeacon                           = nil;
-    beaconDistance                          = @"?";
-    sTimeStamp                              = @"?";
-    sAccuracy                               = @"?";
-    sRSSI                                   = @"?";
-    sMajor                                  = @"?";
-    sMinor                                  = @"?";
     
-    // Register the beacon region with the location manager.
-    [self startMonitoringRegion];
+    //[self.locationManager startMonitoringForRegion:beaconRegion];
+    //[self.locationManager requestStateForRegion:beaconRegion];
+   
 }
 
+/*
 - (void)startMonitoringRegion
 {
     [self stopMonitoringRegion];
     [self.locationManager startMonitoringForRegion:beaconRegion];
     [self.locationManager requestStateForRegion:beaconRegion];
+    
+    //[self performSelector:@selector(requestState:) withObject:beaconRegion afterDelay:1];
+    
 }
 
 - (void)stopMonitoringRegion
 {
-    //NSLog(@"stopMonitoringRegion: %lu", (unsigned long)[locationManager.monitoredRegions count]);
-    
     // ensure everything is cleared
     for (CLRegion *region in [locationManager monitoredRegions]) {
         [locationManager stopMonitoringForRegion:region];
     }
     
-    [locationManager stopRangingBeaconsInRegion:beaconRegion];
+    //[locationManager stopRangingBeaconsInRegion:beaconRegion];
     
-    isGeoFencing = NO;
+    //isGeoFencing = NO;
 }
+*/
 
 - (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region
 {
-    //NSLog(@"didRangeBeacon %lu", (unsigned long)beacons.count);
-    
     if (beacons.count < 1) {
         return;
     }
@@ -279,20 +255,8 @@
             break;
     }
     
-    /*
-    if (beaconLocation.longitude == 0) {
-        
-        CLLocationDegrees latitude  = [region.major doubleValue];
-        CLLocationDegrees longitude = [region.minor doubleValue];
-        beaconLocation = CLLocationCoordinate2DMake(latitude, longitude);
-
-    }*/
-    
-    //NSLog(@"didRangeBeacon %f, %f",beaconLocation.latitude, beaconLocation.longitude);
-    
     NSLog(@"major minor %@, %@",closestBeacon.major,closestBeacon.minor);
 
-    
     [self setValue:beaconDistance forKey:@"beaconDistance"];
     
     NSTimeInterval interval = [[NSDate date] timeIntervalSinceDate:timeStamp];
@@ -310,41 +274,63 @@
 
 - (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region
 {
+    
+    NSString *prefix;
+    
+    if (isGeoFencing) {
+        prefix = @"gf-";
+    } else if(isBeacon) {
+        prefix = @"bc-";
+    } else {
+        prefix = @"none-";
+    }
+    
     switch (state) {
         case CLRegionStateUnknown:
-            NSLog(@"CLRegionStateUnknown");
+            
+            prefix = [NSString stringWithFormat:@"%@ CLRegionStateUnknown", prefix];
+            
+            if ([self isConformedToProtocol]) {
+                [self.delegate locationError:sState];
+            }
+            
+            if (isGeoFencing) {
+                [self stopMonitoringRegions];
+            }
             
             break;
             
         case CLRegionStateInside:
-            NSLog(@"CLRegionStateInside");
             
+            prefix = [NSString stringWithFormat:@"%@ CLRegionStateInside", prefix];
+            
+            // 3: start beacon
+            if (isGeoFencing) {
+                // stop regions + starts detecting beacon
+                [self stopMonitoringRegions];
+            }
+            
+            
+            
+            /*
             if (beaconRegion && !isGeoFencing) {
                 [locationManager startRangingBeaconsInRegion:beaconRegion];
             }
+             */
             break;
             
         case CLRegionStateOutside:
-            NSLog(@"CLRegionStateOutside");
+            prefix = [NSString stringWithFormat:@"%@ CLRegionStateOutside", prefix];
+            
+            if (isBeacon) {
+                // stop beacons + starts regioms
+            }
+            
             break;
     }
-}
-
-#pragma mark - Utils
-
-+ (float)getVersion
-{
-    return [[[UIDevice currentDevice] systemVersion] floatValue];
-}
-
-
-- (BOOL)isConformedToProtocol
-{
-    if ([self.delegate conformsToProtocol:@protocol(CoreLocationManagerDelegate)]) {
-        return YES;
-    }
     
-    return NO;
+    [self setValue:prefix forKey:@"sState"];
 }
+
 
 @end

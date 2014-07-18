@@ -19,35 +19,15 @@
 #import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
+#import "CoreLocationBasic.h"
 
-// Different approach, instead of using observer, using delegates might be more efficient
-@protocol CoreLocationManagerDelegate <NSObject>
 
-@required
-
-- (void)locationUpdateTo: (CLLocation*)location;
-
-@end
-
-@interface CoreLocationManager : NSObject <CLLocationManagerDelegate> {
-    
-    CLLocationManager       *locationManager;
+@interface CoreLocationManager : CoreLocationBasic {
     
     CLCircularRegion        *circularRegion;
     CLBeaconRegion          *beaconRegion;
     CLBeacon                *closestBeacon;
-
-    NSString                *beaconDistance;
-    NSString                *sTimeStamp;
-    NSString                *sAccuracy;
-    NSString                *sRSSI;
-    NSString                *sMajor;
-    NSString                *sMinor;
     
-    NSDate                  *timeStamp;
-    
-    CLLocationCoordinate2D  beaconLocation;
-    BOOL                    isGeoFencing;
 }
 
 
@@ -58,20 +38,11 @@
 - (instancetype)init __attribute__((unavailable("init not available, call sharedLocationManager instead")));
 + (instancetype)new __attribute__((unavailable("new not available, call sharedLocationManager instead")));
 
-
-@property (nonatomic, retain) CLLocationManager *locationManager;
-@property (nonatomic, retain) id<CoreLocationManagerDelegate> delegate;
-@property (nonatomic) CLLocationCoordinate2D beaconPosition;
-
 - (void)registerBeaconRegionWithUUID:(NSUUID *)proximityUUID identifier:(NSString *)sID;
+- (void) registerGeoFence:(CLLocationCoordinate2D)center locationDistance:(CLLocationDistance)radius;
 
-- (void)startMonitoringRegion;
-- (void)stopMonitoringRegion;
+- (CLCircularRegion *) getCircularRegion;
 
-- (void)startUpdatingLocation;
-- (void)stopUpdatingLocation;
-- (void)stopAll;
-
-- (void) enableGeoFence:(CLLocationCoordinate2D)center locationDistance:(CLLocationDistance)radius;
-
+- (BOOL)startCoreLocation;
+- (void)stopCoreLocation;
 @end

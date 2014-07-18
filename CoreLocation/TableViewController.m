@@ -15,25 +15,20 @@
 
 @implementation TableViewController
 
-
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     [self initTextField];
     
-    self.btnCurr.enabled = NO;
+    self.btnAdd.adjustsImageWhenHighlighted     = NO;
+    self.btnAdd.adjustsImageWhenDisabled        = NO;
+
+    self.btnCurr.adjustsImageWhenHighlighted    = NO;
+    self.btnCurr.adjustsImageWhenDisabled       = NO;
     
-    // Default value;
-    tfName.text     = @"com.bebensiganteng.beacon";
-    tfUUID.text     = [NSString stringWithFormat:@"D57092AC-DFAA-446C-8EF3-C81AA22815B5"];
-    tfLat.text      = @"34.679876";
-    tfLong.text     = @"135.498181";
+    clManager           = [CoreLocationManager sharedLocationManager];
+    clManager.delegate  = self;
     
-    // Uncomment the following line to preserve selection between presentations.
-    // self.clearsSelectionOnViewWillAppear = NO;
-    
-    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
 }
 
 #pragma mark - Observer
@@ -46,6 +41,7 @@
     [clManager addObserver:self forKeyPath:@"sRSSI" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
     [clManager addObserver:self forKeyPath:@"sMajor" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
     [clManager addObserver:self forKeyPath:@"sMinor" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
+    [clManager addObserver:self forKeyPath:@"sState" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial) context:NULL];
     
 }
 
@@ -57,6 +53,7 @@
     [clManager removeObserver:self forKeyPath:@"sRSSI"];
     [clManager removeObserver:self forKeyPath:@"sMajor"];
     [clManager removeObserver:self forKeyPath:@"sMinor"];
+    [clManager removeObserver:self forKeyPath:@"sState"];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
@@ -71,7 +68,7 @@
             labelLocStatus.text = newValue;
         }
         
-        // check if beacon scanning still running
+        // check whether the beacon is still running
         if([keyPath isEqualToString:@"sTimeStamp"])
         {
             NSString *newValue = (NSString *)[change objectForKey:NSKeyValueChangeNewKey];
@@ -106,68 +103,79 @@
             
             labelMinor.text = newValue;
         }
+        
+        if([keyPath isEqualToString:@"sState"])
+        {
+            NSString *newValue = (NSString *)[change objectForKey:NSKeyValueChangeNewKey];
+            
+            labelState.text = newValue;
+        }
     }
 }
 
 - (IBAction)btnAdd:(id)sender {
     
+    // TODO: this is not elegant
+    static BOOL isStarted = NO;
+    
+    UIButton *button = (UIButton *)sender;
+    
+    // stops everything
+    if ([button.currentTitle isEqualToString:@"Stop"]) {
+        [button setTitle:@"Start" forState:UIControlStateNormal];
+        [clManager stopCoreLocation];
+        return;
+    }
+    
     BOOL check = YES;
     
     NSString *sName     = tfName.text;
     NSString *sUUID     = tfUUID.text;
-    NSString *sLat      = tfLat.text;
-    NSString *sLong     = tfLong.text;
+    
+    // check textField
+    check = [self checkTextField:tfName inputUsers:@"Name"];
+    check = [self checkTextField:tfUUID inputUsers:@"UUID"];
+    check = [self checkTextField:tfLat inputUsers:@"Latitude"];
+    check = [self checkTextField:tfLong inputUsers:@"Longitude"];
+    check = [self checkTextField:tfRadius inputUsers:@"Radius"];
     
     NSInteger numberOfMatches = [uuidRegex numberOfMatchesInString:sUUID
-                                options:kNilOptions
-                                range:NSMakeRange(0, sUUID.length)];
+                                                           options:kNilOptions
+                                                            range:NSMakeRange(0, sUUID.length)];
     
-    
-    NSLog(@"btnAdd %ld", (long)numberOfMatches);
-    
-    if ([sName isEqual: @"Name"] || sName.length == 0) {
-        tfName.textColor = [UIColor redColor];
-        check = NO;
-    }
-    
-    if ([sUUID isEqual: @"UUID"] || sUUID.length == 0) {
-        tfUUID.textColor = [UIColor redColor];
-        check = NO;
-    }
-
-    if ([sLat isEqual: @"Latitude"] || sUUID.length == 0) {
-        tfLat.textColor = [UIColor redColor];
-        check = NO;
-    }
-    
-    if ([sLong isEqual: @"Longitude"] || sUUID.length == 0) {
-        tfLong.textColor = [UIColor redColor];
-        check = NO;
-    }
-    
-    if (!check) return;
-    
-    if (numberOfMatches > 0)
+    if (numberOfMatches > 0 && check)
     {
-        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:sUUID];
 
-        clManager = [CoreLocationManager sharedLocationManager];
-        [clManager registerBeaconRegionWithUUID:uuid identifier:sName];
+        if (!isStarted) {
+            
+            [clManager setupLocationManager];
+            
+            // TODO: maybe is better to use delegate
+            [self initObserver];
+            
+            isStarted = YES;
+            
+        }
+
+        CLLocationDistance dist     = [tfRadius.text doubleValue];
         
+        //26.189948,-7.558594
         CLLocationDegrees latitude  = [tfLat.text doubleValue];
         CLLocationDegrees longitude = [tfLong.text doubleValue];
+        CLLocationCoordinate2D pos  = CLLocationCoordinate2DMake(latitude, longitude);
         
-        clManager.beaconPosition = CLLocationCoordinate2DMake(latitude, longitude);
-        
-        // maybe is better to use delegate
-        [self initObserver];
+        NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:sUUID];
 
-        self.btnAdd.enabled     = NO;
-        self.btnCurr.enabled    = YES;
+        [clManager registerBeaconRegionWithUUID:uuid identifier:sName];
+        [clManager registerGeoFence:pos locationDistance:dist];
+        
+        if ([clManager startCoreLocation]) {
+            [button setTitle:@"Stop" forState:UIControlStateNormal];
+        }
+        
+        
     }
-    
 }
-
 
 #pragma mark - Text Input
 
@@ -198,6 +206,17 @@
     uuidRegex = [NSRegularExpression regularExpressionWithPattern:uuidPatternString
                                                                options:NSRegularExpressionCaseInsensitive
                                                                  error:nil];
+    
+    
+    // Default value;
+    tfName.text     = @"com.bebensiganteng.beacon";
+    tfUUID.text     = [NSString stringWithFormat:@"D57092AC-DFAA-446C-8EF3-C81AA22815B5"];
+    
+    // test
+    //34.626165 135.521694
+    tfLat.text      = @"34.626165";
+    tfLong.text     = @"135.521694";
+    tfRadius.text   = @"20";
 }
 
 - (void)tfDidBegin:(UITextField *)textField
@@ -234,61 +253,44 @@
     }
 }
 
-- (void)didReceiveMemoryWarning
+
+#pragma mark - Utils
+
+-(void) showMessage:(NSString *) message
 {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+    UIAlertView *alertView = [[UIAlertView alloc]
+                              initWithTitle:@"iBeacon"
+                              message:message
+                              delegate:self
+                              cancelButtonTitle:@"Close"
+                              otherButtonTitles:Nil, nil];
+    
+    alertView.alertViewStyle = UIAlertViewStyleDefault;
+    
+    [alertView show];
+    
 }
 
-/*
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+- (BOOL) checkTextField:(UITextField *)tf inputUsers:(NSString *)sInput
 {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
-    
-    // Configure the cell...
-    
-    return cell;
-}
-*/
+    if ([tf.text isEqual: sInput] || tf.text.length == 0) {
+        
+        tf.textColor = [UIColor redColor];
 
-/*
-// Override to support conditional editing of the table view.
-- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the specified item to be editable.
+        return NO;
+    }
+    
     return YES;
 }
-*/
 
-/*
-// Override to support editing the table view.
-- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (editingStyle == UITableViewCellEditingStyleDelete) {
-        // Delete the row from the data source
-        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
-    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
-        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-    }   
+#pragma mark - CoreLocation Delegates
+
+- (void)locationError: (NSString*)msg {
+    
+    [self.btnAdd setTitle:@"Start" forState:UIControlStateNormal];
+    [self showMessage:msg];
+
 }
-*/
-
-/*
-// Override to support rearranging the table view.
-- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath
-{
-}
-*/
-
-/*
-// Override to support conditional rearranging of the table view.
-- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    // Return NO if you do not want the item to be re-orderable.
-    return YES;
-}
-*/
-
 
 #pragma mark - Navigation
 
@@ -297,10 +299,16 @@
     MapViewController *mapView = segue.destinationViewController;
     
     if ([mapView isKindOfClass:[MapViewController class]]) {
-        [clManager stopAll];
-        [clManager startUpdatingLocation];
+        /// do something here
     }
 
+}
+
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
 }
 
 @end

@@ -9,7 +9,7 @@
 #import <UIKit/UIKit.h>
 #import "CoreLocationManager.h"
 
-@interface TableViewController : UITableViewController {
+@interface TableViewController : UITableViewController <CoreLocationManagerDelegate> {
     
     CoreLocationManager     *clManager;
     
@@ -19,11 +19,13 @@
     IBOutlet UILabel        *labelRSSI;
     IBOutlet UILabel        *labelMajor;
     IBOutlet UILabel        *labelMinor;
+    IBOutlet UILabel        *labelState;
     
     IBOutlet UITextField    *tfName;
     IBOutlet UITextField    *tfUUID;
     IBOutlet UITextField    *tfLat;
     IBOutlet UITextField    *tfLong;
+    IBOutlet UITextField    *tfRadius;
     
     NSRegularExpression     *uuidRegex;
 

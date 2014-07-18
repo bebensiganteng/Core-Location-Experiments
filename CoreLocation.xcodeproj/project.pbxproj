@@ -17,6 +17,7 @@
 		18A967941973CA3500688B42 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 18A967931973CA3500688B42 /* MapKit.framework */; };
 		FE28C42219765EEA000C8F53 /* AnnotationModel.m in Sources */ = {isa = PBXBuildFile; fileRef = FE28C42119765EEA000C8F53 /* AnnotationModel.m */; };
 		FE3EF75F19752E9E00F5E641 /* MapViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = FE3EF75E19752E9E00F5E641 /* MapViewController.m */; };
+		FE4A4D0219776F64003EE56D /* CoreLocationBasic.m in Sources */ = {isa = PBXBuildFile; fileRef = FE4A4D0119776F64003EE56D /* CoreLocationBasic.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,8 @@
 		FE28C42119765EEA000C8F53 /* AnnotationModel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AnnotationModel.m; sourceTree = "<group>"; };
 		FE3EF75D19752E9E00F5E641 /* MapViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MapViewController.h; sourceTree = "<group>"; };
 		FE3EF75E19752E9E00F5E641 /* MapViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MapViewController.m; sourceTree = "<group>"; };
+		FE4A4D0019776F64003EE56D /* CoreLocationBasic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreLocationBasic.h; sourceTree = "<group>"; };
+		FE4A4D0119776F64003EE56D /* CoreLocationBasic.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreLocationBasic.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,6 +150,8 @@
 				FE28C42119765EEA000C8F53 /* AnnotationModel.m */,
 				18A967901973CA0600688B42 /* CoreLocationManager.h */,
 				18A967911973CA0600688B42 /* CoreLocationManager.m */,
+				FE4A4D0019776F64003EE56D /* CoreLocationBasic.h */,
+				FE4A4D0119776F64003EE56D /* CoreLocationBasic.m */,
 			);
 			name = managers;
 			sourceTree = "<group>";
@@ -263,6 +268,7 @@
 				18A9676D1973C98200688B42 /* main.m in Sources */,
 				FE3EF75F19752E9E00F5E641 /* MapViewController.m in Sources */,
 				18A967921973CA0600688B42 /* CoreLocationManager.m in Sources */,
+				FE4A4D0219776F64003EE56D /* CoreLocationBasic.m in Sources */,
 				18A9678F1973C9CF00688B42 /* TableViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
