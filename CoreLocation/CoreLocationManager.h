@@ -30,7 +30,6 @@
     
 }
 
-
 + (CoreLocationManager *)sharedLocationManager;
 
 // clue for improper use (produces compile time error)

@@ -27,6 +27,7 @@
     // Initialization
     timeStamp       = [NSDate dateWithTimeIntervalSince1970:0];
     isGeoFencing    = NO;
+    isBeacon        = NO;
     
     [self resetDispatcher];
     

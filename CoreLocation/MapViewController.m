@@ -77,20 +77,6 @@
     map.mapType                 = MKMapTypeStandard;
     map.delegate                = self;
     map.showsUserLocation       = YES;
-    
-    double rad                  = clManager.getCircularRegion.radius;
-    
-    if(rad > 0) {
-        
-        CLLocationCoordinate2D coord = clManager.getCircularRegion.center;
-        
-        // Add Circle
-        MKCircle *circle = [MKCircle circleWithCenterCoordinate:coord radius:rad];
-         
-        [map addOverlay:circle];
-    }
-    
-    [clManager.locationManager startUpdatingLocation];
 }
 
 - (MKOverlayRenderer*)mapView:(MKMapView *)mapView rendererForOverlay:(id<MKOverlay>)overlay
@@ -129,6 +115,27 @@
 {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    double rad = clManager.getCircularRegion.radius;
+    
+    if(rad > 0) {
+        
+        if([map.overlays count] > 0) {
+            [map removeOverlays:map.overlays];
+        }
+        
+        CLLocationCoordinate2D coord = clManager.getCircularRegion.center;
+        
+        // Add Circle
+        MKCircle *circle = [MKCircle circleWithCenterCoordinate:coord radius:rad];
+        
+        [map addOverlay:circle];
+    }
+    
+    [clManager.locationManager startUpdatingLocation];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {

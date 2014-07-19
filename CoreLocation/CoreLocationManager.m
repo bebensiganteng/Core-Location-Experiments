@@ -71,7 +71,7 @@
     }
     
     if (isBeacon) {
-        // stop beacon
+        [self stopBeacon];
     }
     
     [self resetDispatcher];
@@ -195,34 +195,25 @@
     
     closestBeacon                           = nil;
     
-    //[self.locationManager startMonitoringForRegion:beaconRegion];
-    //[self.locationManager requestStateForRegion:beaconRegion];
-   
 }
 
-/*
-- (void)startMonitoringRegion
+- (void)startBeacon
 {
-    [self stopMonitoringRegion];
-    [self.locationManager startMonitoringForRegion:beaconRegion];
-    [self.locationManager requestStateForRegion:beaconRegion];
+    isBeacon = YES;
     
-    //[self performSelector:@selector(requestState:) withObject:beaconRegion afterDelay:1];
-    
+    [locationManager startMonitoringForRegion:beaconRegion];
+    [locationManager startRangingBeaconsInRegion:beaconRegion];
+
 }
 
-- (void)stopMonitoringRegion
+- (void)stopBeacon
 {
-    // ensure everything is cleared
-    for (CLRegion *region in [locationManager monitoredRegions]) {
-        [locationManager stopMonitoringForRegion:region];
-    }
+    isBeacon = NO;
     
-    //[locationManager stopRangingBeaconsInRegion:beaconRegion];
-    
-    //isGeoFencing = NO;
+    [locationManager stopRangingBeaconsInRegion:beaconRegion];
+
 }
-*/
+
 
 - (void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region
 {
@@ -275,23 +266,13 @@
 - (void)locationManager:(CLLocationManager *)manager didDetermineState:(CLRegionState)state forRegion:(CLRegion *)region
 {
     
-    NSString *prefix;
-    
-    if (isGeoFencing) {
-        prefix = @"gf-";
-    } else if(isBeacon) {
-        prefix = @"bc-";
-    } else {
-        prefix = @"none-";
-    }
-    
     switch (state) {
         case CLRegionStateUnknown:
             
-            prefix = [NSString stringWithFormat:@"%@ CLRegionStateUnknown", prefix];
-            
+            [self setValue:@"CLRegionStateUnknown" forKey:@"sState"];
+
             if ([self isConformedToProtocol]) {
-                [self.delegate locationError:sState];
+                [self.delegate locationError:@"CLRegionStateUnknown"];
             }
             
             if (isGeoFencing) {
@@ -302,34 +283,26 @@
             
         case CLRegionStateInside:
             
-            prefix = [NSString stringWithFormat:@"%@ CLRegionStateInside", prefix];
-            
-            // 3: start beacon
-            if (isGeoFencing) {
-                // stop regions + starts detecting beacon
-                [self stopMonitoringRegions];
+            [self setValue:@"CLRegionStateInside" forKey:@"sState"];
+
+            // 3: if inside region, start Ranging
+            if (!isBeacon) {
+                [self startBeacon];
             }
             
-            
-            
-            /*
-            if (beaconRegion && !isGeoFencing) {
-                [locationManager startRangingBeaconsInRegion:beaconRegion];
-            }
-             */
             break;
             
         case CLRegionStateOutside:
-            prefix = [NSString stringWithFormat:@"%@ CLRegionStateOutside", prefix];
             
+            [self setValue:@"CLRegionStateOutside" forKey:@"sState"];
+
+            // 4: if outside region, stop Ranging
             if (isBeacon) {
-                // stop beacons + starts regioms
+                [self stopBeacon];
             }
             
             break;
     }
-    
-    [self setValue:prefix forKey:@"sState"];
 }
 
 

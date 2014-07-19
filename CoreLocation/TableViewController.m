@@ -20,11 +20,6 @@
     [super viewDidLoad];
     [self initTextField];
     
-    self.btnAdd.adjustsImageWhenHighlighted     = NO;
-    self.btnAdd.adjustsImageWhenDisabled        = NO;
-
-    self.btnCurr.adjustsImageWhenHighlighted    = NO;
-    self.btnCurr.adjustsImageWhenDisabled       = NO;
     
     clManager           = [CoreLocationManager sharedLocationManager];
     clManager.delegate  = self;
