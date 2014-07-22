@@ -201,7 +201,7 @@
 {
     isBeacon = YES;
     
-    [locationManager startMonitoringForRegion:beaconRegion];
+    //[locationManager startMonitoringForRegion:beaconRegion];
     [locationManager startRangingBeaconsInRegion:beaconRegion];
 
 }
